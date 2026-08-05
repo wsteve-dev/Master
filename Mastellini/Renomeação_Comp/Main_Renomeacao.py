@@ -5,9 +5,19 @@ import sys
 import os
 
 # ============================================================
-# Caminhos dos scripts
+# Configurações do repositório GitHub
 # ============================================================
-PASTA_BASE = r"C:\Users\Usuario\Desktop\Teste\Mastellini\Renomeação_Comp"
+REPO_URL = "https://github.com/wsteve-dev/Master.git"
+REPO_BRANCH = "main"
+
+# Pasta local onde o repositório será clonado/atualizado
+PASTA_REPO_LOCAL = r"C:\Users\Usuario\Desktop\GitHub\Master"
+
+# Subpasta dentro do repositório onde ficam os scripts
+SUBPASTA_SCRIPTS = os.path.join("Mastellini", "Renomeação_Comp")
+
+# Caminho final usado pelo restante do programa
+PASTA_BASE = os.path.join(PASTA_REPO_LOCAL, SUBPASTA_SCRIPTS)
 
 RENOMEAR_PDFS = os.path.join(PASTA_BASE, "renomear_pdfs.py")
 REMOVER_PONTOS_VIRGULAS = os.path.join(PASTA_BASE, "Remover_Pontos_Virgulas.py")
@@ -15,11 +25,92 @@ RENOMEAR_CRBM = os.path.join(PASTA_BASE, "Renomear_CRBM.py")
 RENOMEAR_MVF = os.path.join(PASTA_BASE, "Renomear_MVF.py")
 
 
+def git_disponivel():
+    """Verifica se o comando git está disponível no sistema."""
+    try:
+        subprocess.run(
+            ["git", "--version"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def atualizar_repositorio():
+    """
+    Clona o repositório se ele ainda não existir localmente,
+    ou faz um pull para atualizar a versão local.
+    Retorna True se tudo ocorreu bem, False caso contrário.
+    """
+    if not git_disponivel():
+        messagebox.showerror(
+            "Git não encontrado",
+            "O Git não foi encontrado no sistema.\n"
+            "Instale o Git (https://git-scm.com/) e tente novamente."
+        )
+        return False
+
+    try:
+        pasta_git = os.path.join(PASTA_REPO_LOCAL, ".git")
+
+        if os.path.isdir(pasta_git):
+            # Repositório já existe -> atualizar
+            status_label.config(text="Atualizando repositório...")
+            janela.update_idletasks()
+
+            resultado = subprocess.run(
+                ["git", "-C", PASTA_REPO_LOCAL, "pull", "origin", REPO_BRANCH],
+                capture_output=True,
+                text=True
+            )
+
+            if resultado.returncode != 0:
+                messagebox.showerror(
+                    "Erro ao atualizar repositório",
+                    resultado.stderr or "Erro desconhecido ao executar git pull."
+                )
+                return False
+
+        else:
+            # Repositório ainda não existe -> clonar
+            os.makedirs(os.path.dirname(PASTA_REPO_LOCAL), exist_ok=True)
+
+            status_label.config(text="Clonando repositório...")
+            janela.update_idletasks()
+
+            resultado = subprocess.run(
+                ["git", "clone", "-b", REPO_BRANCH, REPO_URL, PASTA_REPO_LOCAL],
+                capture_output=True,
+                text=True
+            )
+
+            if resultado.returncode != 0:
+                messagebox.showerror(
+                    "Erro ao clonar repositório",
+                    resultado.stderr or "Erro desconhecido ao executar git clone."
+                )
+                return False
+
+        status_label.config(text="Repositório atualizado ✅")
+        return True
+
+    except Exception as e:
+        messagebox.showerror("Erro ao atualizar repositório", str(e))
+        return False
+
+
 def rodar_script(caminho, nome_script, precisa_console=False):
-    """Executa o script em um processo separado."""
+    """Atualiza o repositório e executa o script em um processo separado."""
+    if not atualizar_repositorio():
+        return
+
     if not os.path.exists(caminho):
         messagebox.showerror("Erro", f"Arquivo não encontrado:\n{caminho}")
         return
+
     try:
         if precisa_console:
             # Abre em um console novo (necessário para scripts com input())
@@ -37,7 +128,7 @@ def rodar_script(caminho, nome_script, precisa_console=False):
 # ---------------- Interface ----------------
 janela = tk.Tk()
 janela.title("Painel de Renomeação de PDFs")
-janela.geometry("320x280")
+janela.geometry("320x300")
 janela.resizable(False, False)
 
 titulo = tk.Label(janela, text="Escolha a automação", font=("Segoe UI", 13, "bold"))
