@@ -26,6 +26,23 @@ CONVENIOS_BB = {
 
 
 # ---------------------------------------------------------------------------
+# Estatísticas de execução (resumo final)
+# ---------------------------------------------------------------------------
+ESTATISTICAS = {
+    "renomeados": 0,
+    "campos_nao_encontrados": 0,
+    "nao_reconhecidos": 0,
+    "erros": 0,
+}
+
+
+def avisar_campos_faltando(tipo: str):
+    """Imprime aviso de campo(s) não encontrado(s) e contabiliza no resumo."""
+    print(f"   [AVISO] {tipo} – campo(s) não encontrado(s). Arquivo não renomeado.")
+    ESTATISTICAS["campos_nao_encontrados"] += 1
+
+
+# ---------------------------------------------------------------------------
 # Helpers gerais
 # ---------------------------------------------------------------------------
 
@@ -115,6 +132,7 @@ def renomear_pdf(caminho: Path, nome_base: str) -> Path:
     novo = gerar_caminho_disponivel(caminho.parent, nome_base)
     caminho.rename(novo)
     print(f"     ✔ '{caminho.name}' → '{novo.name}'")
+    ESTATISTICAS["renomeados"] += 1
     return novo
 
 
@@ -161,7 +179,7 @@ def handle_bb_dda(texto: str, caminho: Path):
     valor_raw    = extrair_campo_linha(texto, "VALOR DO DEBITO R$")
 
     if not all([convenio_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB DDA – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB DDA")
         return True
 
     # Normaliza convênio
@@ -184,7 +202,7 @@ def handle_bb_folha(texto: str, caminho: Path):
     valor_raw      = extrair_campo_linha(texto, "Valor real pagamento:")
 
     if not all([favorecido_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB Folha – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB Folha")
         return True
 
     data  = limpar_data(data_raw)
@@ -213,7 +231,7 @@ def handle_bb_boleto_convenio(texto: str, caminho: Path):
     valor_raw    = extrair_campo_linha(texto, "Valor Total ")
 
     if not all([convenio_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB Boleto/Convênio – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB Boleto/Convênio")
         return True
 
     # Convênio: usa mapeamento se existir, senão mantém como veio
@@ -241,7 +259,7 @@ def handle_bb_pagamento_eletronico(texto: str, caminho: Path):
     valor_raw      = extrair_campo_linha(texto, "VALOR CREDITADO (R$):")
 
     if not all([favorecido_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB Pagamento Eletrônico – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB Pagamento Eletrônico")
         return True
 
     data  = limpar_data(data_raw)
@@ -265,7 +283,7 @@ def handle_bb_pag_salario(texto: str, caminho: Path):
     valor_raw        = extrair_campo_linha(texto, "VALOR:")
 
     if not all([beneficiario_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB Pag Salário – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB Pag Salário")
         return True
 
     data  = limpar_data(data_raw)
@@ -289,7 +307,7 @@ def handle_bb_pix(texto: str, caminho: Path):
     valor_raw        = extrair_campo_linha(texto, "VALOR:")
 
     if not all([beneficiario_raw, data_raw, valor_raw]):
-        print("   [AVISO] BB Pix – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("BB Pix")
         return True
 
     data  = limpar_data(data_raw)
@@ -314,7 +332,7 @@ def handle_sicredi_boleto(texto: str, caminho: Path):
     valor_raw        = extrair_campo_linha(texto, "Valor Pago (R$):")
 
     if not all([beneficiario_raw, data_raw, valor_raw]):
-        print("   [AVISO] Sicredi Boleto – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("Sicredi Boleto")
         return True
 
     data  = limpar_data(data_raw)
@@ -345,7 +363,7 @@ def handle_sicredi_pix(texto: str, caminho: Path):
             break
 
     if not all([valor_raw, data_raw, destinatario_raw]):
-        print("   [AVISO] Sicredi PIX – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("Sicredi PIX")
         return True
 
     data         = limpar_data(data_raw)
@@ -379,7 +397,7 @@ def handle_sicredi_debito_automatico(texto: str, caminho: Path):
     valor_raw   = extrair_campo_linha(texto, "Valor do débito automático ")
 
     if not all([empresa_raw, data_raw, valor_raw]):
-        print("   [AVISO] Sicredi Débito Automático – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("Sicredi Débito Automático")
         return True
 
     data  = limpar_data(data_raw)
@@ -403,7 +421,7 @@ def handle_sicredi_contas_consumo(texto: str, caminho: Path):
     valor_raw   = extrair_campo_linha(texto, "Valor Total (R$):")
 
     if not all([empresa_raw, data_raw, valor_raw]):
-        print("   [AVISO] Sicredi Contas de Consumo – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("Sicredi Contas de Consumo")
         return True
 
     data  = limpar_data(data_raw)
@@ -422,7 +440,7 @@ def handle_sicredi_folha(texto: str, caminho: Path):
     valor_raw      = extrair_campo_linha(texto, "Valor Total (R$):")
 
     if not all([favorecido_raw, data_raw, valor_raw]):
-        print("   [AVISO] Sicredi Folha – campo(s) não encontrado(s). Arquivo não renomeado.")
+        avisar_campos_faltando("Sicredi Folha")
         return True
 
     data  = limpar_data(data_raw)
@@ -467,6 +485,7 @@ def processar_renomeio(caminho: Path, banco: str):
             return
 
     print(f"   [AVISO] Nenhum tipo reconhecido para '{caminho.name}' no banco {banco}.")
+    ESTATISTICAS["nao_reconhecidos"] += 1
 
 
 # ---------------------------------------------------------------------------
@@ -532,11 +551,31 @@ def main():
 
     print(f"\nProcessando {len(arquivos_pdf)} arquivo(s)...")
 
+    erros = []
     for pdf in arquivos_pdf:
         try:
             processar_arquivo(pdf, pasta_saida, banco)
         except Exception as e:
             print(f"  [ERRO] '{pdf.name}': {e}")
+            ESTATISTICAS["erros"] += 1
+            erros.append(pdf.name)
+
+    # ------------------------------------------------------------------
+    # Resumo final
+    # ------------------------------------------------------------------
+    print("\n" + "=" * 50)
+    print("RESUMO")
+    print("=" * 50)
+    print(f"PDF(s) de entrada processado(s)     : {len(arquivos_pdf)}")
+    print(f"Arquivo(s) renomeado(s) com sucesso : {ESTATISTICAS['renomeados']}")
+    print(f"Tipo não reconhecido                : {ESTATISTICAS['nao_reconhecidos']}")
+    print(f"Campo(s) não encontrado(s)          : {ESTATISTICAS['campos_nao_encontrados']}")
+    print(f"Erro(s) durante o processamento     : {ESTATISTICAS['erros']}")
+
+    if erros:
+        print(f"\n[!] PDF(s) de entrada com erro ({len(erros)}):")
+        for nome in erros:
+            print(f"   - {nome}")
 
     print("\nConcluído.")
 
