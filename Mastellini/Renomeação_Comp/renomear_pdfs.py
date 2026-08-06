@@ -528,6 +528,7 @@ def main():
 
     if not caminho_entrada.exists():
         print(f"\nErro: o caminho '{caminho_entrada}' não existe.")
+        input("\nPressione ENTER para sair...")
         sys.exit(1)
 
     # Saída
@@ -547,6 +548,7 @@ def main():
 
     if not arquivos_pdf:
         print("Nenhum arquivo .pdf encontrado.")
+        input("\nPressione ENTER para sair...")
         sys.exit(0)
 
     print(f"\nProcessando {len(arquivos_pdf)} arquivo(s)...")
@@ -578,7 +580,12 @@ def main():
             print(f"   - {nome}")
 
     print("\nConcluído.")
+    input("\nPressione ENTER para sair...")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"\n[ERRO INESPERADO] {e}")
+        input("\nPressione ENTER para sair...")
