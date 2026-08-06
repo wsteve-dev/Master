@@ -77,10 +77,15 @@ def limpar_valor_monetario(valor: str) -> str:
 
 def limpar_nome_destinatario(valor: str) -> str:
     """
-    Remove CPF/CNPJ que possam aparecer junto ao nome.
+    Remove CPF/CNPJ que possam aparecer junto ao nome, seja antes ou depois.
     Ex: 'Douglas Gabriel 10845579401' -> 'Douglas Gabriel'
-    Estratégia: remove sequências de 11 ou 14 dígitos (com ou sem máscara).
+    Ex: '61 075 577 EDUARDO ARAUJO DA CONCEICAO' -> 'EDUARDO ARAUJO DA CONCEICAO'
+    Ex: '28.192.898 ANDERSON ALEXANDRE SIMAO DE AZEVEDO SANTOS' -> 'ANDERSON ALEXANDRE SIMAO DE AZEVEDO SANTOS'
+    Estratégia: remove sequências de 11 ou 14 dígitos (com ou sem máscara) e
+    qualquer prefixo numérico (raiz de CNPJ/matrícula) antes do nome.
     """
+    # Prefixo numérico no início (ex.: raiz de CNPJ "61 075 577 " ou "28.192.898 ")
+    valor = re.sub(r"^[\d\.\/\-\s]+(?=[A-Za-zÀ-ÿ])", "", valor)
     valor = re.sub(r"\d{3}\.?\d{3}\.?\d{3}[-.]?\d{2}", "", valor)  # CPF
     valor = re.sub(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", "", valor)  # CNPJ
     valor = re.sub(r"\b\d{11}\b", "", valor)  # CPF sem formatação
