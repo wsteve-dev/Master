@@ -275,6 +275,30 @@ def handle_bb_pag_salario(texto: str, caminho: Path):
     return True
 
 
+def handle_bb_pix(texto: str, caminho: Path):
+    """
+    Cobre comprovantes BB (SISBB) do tipo:
+      Comprovante Pix
+    Campos: PAGO PARA / DATA / VALOR
+    """
+    if "COMPROVANTE PIX" not in texto.upper():
+        return False
+
+    beneficiario_raw = extrair_campo_linha(texto, "PAGO PARA:")
+    data_raw         = extrair_campo_linha(texto, "DATA:")
+    valor_raw        = extrair_campo_linha(texto, "VALOR:")
+
+    if not all([beneficiario_raw, data_raw, valor_raw]):
+        print("   [AVISO] BB Pix – campo(s) não encontrado(s). Arquivo não renomeado.")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, beneficiario_raw.strip(), valor))
+    return True
+
+
 def handle_sicredi_boleto(texto: str, caminho: Path):
     """Cobre tanto 'Boleto' quanto 'Pagar Boletos Eletronicos' (DDA)."""
     texto_upper = texto.upper()
@@ -408,6 +432,7 @@ BANCOS = {
         handle_bb_boleto_convenio,
         handle_bb_pagamento_eletronico,
         handle_bb_pag_salario,
+        handle_bb_pix,
     ],
     "Sicredi": [
         handle_sicredi_pix,
