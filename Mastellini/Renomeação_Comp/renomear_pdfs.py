@@ -352,6 +352,14 @@ def handle_sicredi_pix(texto: str, caminho: Path):
     destinatario = limpar_nome_destinatario(destinatario_raw)
     valor        = limpar_valor_monetario(valor_raw)
 
+    # Caso especial: quando o destinatário é LABFAR, inclui o nome do
+    # devedor logo após "LABFAR" (antes do valor).
+    if destinatario.strip().upper() == "LABFAR":
+        devedor_raw = extrair_campo_linha(texto, "Nome do devedor:")
+        if devedor_raw:
+            devedor = limpar_nome_destinatario(devedor_raw)
+            destinatario = f"{destinatario} {devedor}"
+
     renomear_pdf(caminho, montar_nome(data, destinatario, valor))
     return True
 
