@@ -217,6 +217,45 @@ def handle_bb_folha(texto: str, caminho: Path):
     return True
 
 
+def handle_bb_multa_transito(texto: str, caminho: Path):
+    """
+    Cobre comprovantes SISBB do tipo:
+      COMPROVANTE DE PAGAMENTO — Multa de trânsito (DETRAN/SEFAZ)
+    Layout tabular:
+      TIPO DE PAGAMENTO   VENCIMENTO   VALOR (R$)
+      MULTA D.E.R.        20/07/2026   104,12
+    Precisa vir ANTES de handle_bb_boleto_convenio na lista de handlers,
+    pois ambos compartilham o texto "COMPROVANTE DE PAGAMENTO".
+    """
+    texto_upper = texto.upper()
+    if "TRÂNSITO" not in texto_upper and "TRANSITO" not in texto_upper:
+        return False
+
+    linha_tabela = re.compile(r"^(.+?)\s+(\d{2}/\d{2}/\d{4})\s+([\d\.]+,\d{2})\s*$")
+
+    tipo_raw = data_raw = valor_raw = None
+    for linha in texto.splitlines():
+        m = linha_tabela.match(linha.strip())
+        if m:
+            tipo_raw, data_raw, valor_raw = m.groups()
+            break
+
+    # Prefere a data da transação/pagamento, se disponível; senão usa o vencimento da tabela
+    data_transacao_raw = extrair_campo_linha(texto, "DATA DA TRANSAÇÃO:")
+    if data_transacao_raw:
+        data_raw = data_transacao_raw
+
+    if not all([tipo_raw, data_raw, valor_raw]):
+        avisar_campos_faltando("BB Multa de Trânsito")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, tipo_raw.strip(), valor))
+    return True
+
+
 def handle_bb_boleto_convenio(texto: str, caminho: Path):
     """
     Cobre comprovantes SISBB do tipo:
@@ -460,6 +499,7 @@ BANCOS = {
     "BB": [
         handle_bb_dda,
         handle_bb_folha,
+        handle_bb_multa_transito,
         handle_bb_boleto_convenio,
         handle_bb_pagamento_eletronico,
         handle_bb_pag_salario,
