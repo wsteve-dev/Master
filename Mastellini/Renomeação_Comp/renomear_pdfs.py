@@ -228,7 +228,7 @@ def handle_bb_multa_transito(texto: str, caminho: Path):
     pois ambos compartilham o texto "COMPROVANTE DE PAGAMENTO".
     """
     texto_upper = texto.upper()
-    if "TRÂNSITO" not in texto_upper and "TRANSITO" not in texto_upper:
+    if "MULTA DE TR" not in texto_upper:
         return False
 
     linha_tabela = re.compile(r"^(.+?)\s+(\d{2}/\d{2}/\d{4})\s+([\d\.]+,\d{2})\s*$")
@@ -247,6 +247,43 @@ def handle_bb_multa_transito(texto: str, caminho: Path):
 
     if not all([tipo_raw, data_raw, valor_raw]):
         avisar_campos_faltando("BB Multa de Trânsito")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, tipo_raw.strip(), valor))
+    return True
+
+
+def handle_bb_licenciamento(texto: str, caminho: Path):
+    """
+    Cobre comprovantes SISBB do tipo:
+      COMPROVANTE DE PAGAMENTO — Licenciamento de veículo (DETRAN/SEFAZ)
+    Layout tabular (sem data na linha, apenas o ano de exercício):
+      TIPO DE PAGAMENTO   EXERC   VENCIMENTO   VALOR (R$)
+      TAXA LICENCIAMENTO  2026                 174,08
+      TOTAL                                    174,08
+    Precisa vir ANTES de handle_bb_boleto_convenio na lista de handlers,
+    pois ambos compartilham o texto "COMPROVANTE DE PAGAMENTO".
+    """
+    texto_upper = texto.upper()
+    if "LICENCIAMENTO DE VEICULO" not in texto_upper and "LICENCIAMENTO DE VEÍCULO" not in texto_upper:
+        return False
+
+    linha_tabela = re.compile(r"^(.+?)\s+(\d{4})\s+([\d\.]+,\d{2})\s*$")
+
+    tipo_raw = valor_raw = None
+    for linha in texto.splitlines():
+        m = linha_tabela.match(linha.strip())
+        if m:
+            tipo_raw, _exerc, valor_raw = m.groups()
+            break
+
+    data_raw = extrair_campo_linha(texto, "DATA DA TRANSAÇÃO:")
+
+    if not all([tipo_raw, data_raw, valor_raw]):
+        avisar_campos_faltando("BB Licenciamento")
         return True
 
     data  = limpar_data(data_raw)
@@ -500,6 +537,7 @@ BANCOS = {
         handle_bb_dda,
         handle_bb_folha,
         handle_bb_multa_transito,
+        handle_bb_licenciamento,
         handle_bb_boleto_convenio,
         handle_bb_pagamento_eletronico,
         handle_bb_pag_salario,
