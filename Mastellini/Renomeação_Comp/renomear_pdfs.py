@@ -293,6 +293,42 @@ def handle_bb_licenciamento(texto: str, caminho: Path):
     return True
 
 
+def handle_bb_ipva(texto: str, caminho: Path):
+    """
+    Cobre comprovantes SISBB do tipo:
+      COMPROVANTE DE PAGAMENTO — IPVA (DETRAN/SEFAZ)
+    Layout tabular (com exercício E vencimento na mesma linha):
+      TIPO DE PAGAMENTO   EXERC   VENCIMENTO   VALOR (R$)
+      IPVA 5a PARCELA      2026   17/08/2026   1.486,66
+    Precisa vir ANTES de handle_bb_boleto_convenio na lista de handlers,
+    pois ambos compartilham o texto "COMPROVANTE DE PAGAMENTO".
+    """
+    texto_upper = texto.upper()
+    if "IPVA" not in texto_upper:
+        return False
+
+    linha_tabela = re.compile(r"^(.+?)\s+(\d{4})\s+(\d{2}/\d{2}/\d{4})\s+([\d\.]+,\d{2})\s*$")
+
+    tipo_raw = valor_raw = None
+    for linha in texto.splitlines():
+        m = linha_tabela.match(linha.strip())
+        if m:
+            tipo_raw, _exerc, _vencimento, valor_raw = m.groups()
+            break
+
+    data_raw = extrair_campo_linha(texto, "DATA DA TRANSAÇÃO:")
+
+    if not all([tipo_raw, data_raw, valor_raw]):
+        avisar_campos_faltando("BB IPVA")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, tipo_raw.strip(), valor))
+    return True
+
+
 def handle_bb_boleto_convenio(texto: str, caminho: Path):
     """
     Cobre comprovantes SISBB do tipo:
@@ -538,6 +574,7 @@ BANCOS = {
         handle_bb_folha,
         handle_bb_multa_transito,
         handle_bb_licenciamento,
+        handle_bb_ipva,
         handle_bb_boleto_convenio,
         handle_bb_pagamento_eletronico,
         handle_bb_pag_salario,
