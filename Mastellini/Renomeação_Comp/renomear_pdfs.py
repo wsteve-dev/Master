@@ -601,6 +601,30 @@ def handle_sicredi_contas_consumo(texto: str, caminho: Path):
     return True
 
 
+def handle_sicredi_tributos(texto: str, caminho: Path):
+    """
+    Cobre comprovantes Sicredi do tipo:
+      Tributos (impostos/taxas pagos via código de barras/convênio)
+    Campos: Tipo de Documento / Data do Pagamento / Valor Total (R$)
+    """
+    if "Tributos" not in texto:
+        return False
+
+    tipo_raw  = extrair_campo_linha(texto, "Tipo de Documento:")
+    data_raw  = extrair_campo_linha(texto, "Data do Pagamento:")
+    valor_raw = extrair_campo_linha(texto, "Valor Total (R$):")
+
+    if not all([tipo_raw, data_raw, valor_raw]):
+        avisar_campos_faltando("Sicredi Tributos")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, tipo_raw.strip(), valor))
+    return True
+
+
 def handle_sicredi_folha(texto: str, caminho: Path):
     if "Folha de Pagamento" not in texto:
         return False
@@ -638,6 +662,7 @@ BANCOS = {
         handle_sicredi_pix,
         handle_sicredi_debito_automatico,
         handle_sicredi_contas_consumo,
+        handle_sicredi_tributos,
         handle_sicredi_boleto,
         handle_sicredi_folha,
     ],
