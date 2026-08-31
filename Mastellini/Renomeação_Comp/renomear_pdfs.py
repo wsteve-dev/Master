@@ -109,9 +109,30 @@ def extrair_campo_linha(texto: str, rotulo: str) -> str | None:
     return None
 
 
+def extrair_linha_seguinte(texto: str, rotulo: str) -> str | None:
+    """
+    Encontra a linha cujo conteúdo é EXATAMENTE o rótulo (ignorando espaços
+    nas pontas e maiúsculas/minúsculas) e retorna a próxima linha não-vazia.
+    Útil para layouts onde o valor não fica na mesma linha do rótulo.
+    Ex.:
+      BENEFICIARIO:
+      DIAGNOSTICOS DA AMERICA S.A .
+    """
+    rotulo_lower = rotulo.strip().lower()
+    linhas = texto.splitlines()
+    for i, linha in enumerate(linhas):
+        if linha.strip().lower() == rotulo_lower:
+            for prox in linhas[i + 1:]:
+                if prox.strip():
+                    return prox.strip()
+            return None
+    return None
+
+
 def sanitizar_nome(nome: str) -> str:
     """Remove caracteres inválidos para nome de arquivo."""
     nome = re.sub(r'[\\/*?:"<>|]', "", nome)
+    nome = re.sub(r"\s+\.", ".", nome)  # corrige "S.A ." -> "S.A." (artefato comum em PDFs)
     return re.sub(r"\s+", " ", nome).strip()
 
 
@@ -326,6 +347,38 @@ def handle_bb_ipva(texto: str, caminho: Path):
     valor = limpar_valor_monetario(valor_raw)
 
     renomear_pdf(caminho, montar_nome(data, tipo_raw.strip(), valor))
+    return True
+
+
+def handle_bb_pagamento_titulos(texto: str, caminho: Path):
+    """
+    Cobre comprovantes BB do tipo:
+      COMPROVANTE DE PAGAMENTO DE TITULOS
+    Layout diferente: o nome do beneficiário fica na linha SEGUINTE ao
+    rótulo "BENEFICIARIO:", não na mesma linha.
+      BENEFICIARIO:
+      DIAGNOSTICOS DA AMERICA S.A .
+      ...
+      DATA DO PAGAMENTO 28/08/2026
+      VALOR COBRADO 314.976,20
+    Precisa vir ANTES de handle_bb_boleto_convenio na lista de handlers,
+    pois ambos compartilham o texto "COMPROVANTE DE PAGAMENTO".
+    """
+    if "COMPROVANTE DE PAGAMENTO DE TITULOS" not in texto.upper():
+        return False
+
+    beneficiario_raw = extrair_linha_seguinte(texto, "BENEFICIARIO:")
+    data_raw         = extrair_campo_linha(texto, "DATA DO PAGAMENTO ")
+    valor_raw        = extrair_campo_linha(texto, "VALOR COBRADO ")
+
+    if not all([beneficiario_raw, data_raw, valor_raw]):
+        avisar_campos_faltando("BB Pagamento de Títulos")
+        return True
+
+    data  = limpar_data(data_raw)
+    valor = limpar_valor_monetario(valor_raw)
+
+    renomear_pdf(caminho, montar_nome(data, beneficiario_raw.strip(), valor))
     return True
 
 
@@ -575,6 +628,7 @@ BANCOS = {
         handle_bb_multa_transito,
         handle_bb_licenciamento,
         handle_bb_ipva,
+        handle_bb_pagamento_titulos,
         handle_bb_boleto_convenio,
         handle_bb_pagamento_eletronico,
         handle_bb_pag_salario,
