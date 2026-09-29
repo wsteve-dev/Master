@@ -129,6 +129,50 @@ def extrair_linha_seguinte(texto: str, rotulo: str) -> str | None:
     return None
 
 
+def extrair_nome_recebedor_ib(texto: str) -> str | None:
+    """
+    Sicredi Internet Banking: dentro do bloco "Dados do recebedor", encontra
+    a linha "Nome" (ou "Nome CPF/CNPJ", pois os rótulos ficam lado a lado) e
+    retorna a linha seguinte, que traz o nome seguido do CPF/CNPJ.
+    Ex.: 'MENEGATTI & TAHARA LTDA 06.879.678/0001-72' -> nome + CNPJ juntos
+    (o CNPJ é removido depois por limpar_nome_destinatario).
+    """
+    linhas = texto.splitlines()
+    dentro_recebedor = False
+    for i, linha in enumerate(linhas):
+        l = linha.strip().lower()
+        if l == "dados do recebedor":
+            dentro_recebedor = True
+            continue
+        if dentro_recebedor:
+            if l == "dados do pagador":
+                break
+            if l.startswith("nome"):
+                for prox in linhas[i + 1:]:
+                    if prox.strip():
+                        return prox.strip()
+                break
+    return None
+
+
+def extrair_data_movimentacao_ib(texto: str) -> str | None:
+    """
+    Sicredi Internet Banking: o rótulo "Data e hora da criação da transação"
+    fica colado com outro campo na mesma linha, e o valor (data + hora) na
+    linha seguinte, também colado. Busca a data via regex na linha seguinte.
+    """
+    linhas = texto.splitlines()
+    for i, linha in enumerate(linhas):
+        l = linha.lower()
+        if "data e hora da cria" in l and "transa" in l:
+            for prox in linhas[i + 1:]:
+                m = re.search(r"\d{2}/\d{2}/\d{4}(?:\s+\d{2}:\d{2}:\d{2})?", prox)
+                if m:
+                    return m.group(0)
+            break
+    return None
+
+
 def sanitizar_nome(nome: str) -> str:
     """Remove caracteres inválidos para nome de arquivo."""
     nome = re.sub(r'[\\/*?:"<>|]', "", nome)
@@ -552,6 +596,41 @@ def handle_sicredi_pix(texto: str, caminho: Path):
     return True
 
 
+def handle_sicredi_pix_ib(texto: str, caminho: Path):
+    """
+    Cobre comprovantes Sicredi (Internet Banking) do tipo:
+      Comprovante pagamento Pix
+    Layout diferente do handle_sicredi_pix (app Sicredi): dados do
+    recebedor/pagador em colunas lado a lado e rótulos combinados na
+    mesma linha. Usa helpers dedicados para lidar com isso.
+    """
+    if "Comprovante pagamento Pix" not in texto:
+        return False
+
+    valor_raw = extrair_linha_seguinte(texto, "Valor")
+    nome_raw  = extrair_nome_recebedor_ib(texto)
+    data_raw  = extrair_data_movimentacao_ib(texto)
+
+    if not all([valor_raw, nome_raw, data_raw]):
+        avisar_campos_faltando("Sicredi Pix (Internet Banking)")
+        return True
+
+    data         = limpar_data(data_raw)
+    destinatario = limpar_nome_destinatario(nome_raw)
+    valor        = limpar_valor_monetario(valor_raw)
+
+    # Mesmo caso especial do LABFAR usado no outro modelo de Pix,
+    # para manter consistência.
+    if destinatario.strip().upper() == "LABFAR":
+        devedor_raw = extrair_campo_linha(texto, "Nome do devedor:")
+        if devedor_raw:
+            devedor = limpar_nome_destinatario(devedor_raw)
+            destinatario = f"{destinatario} {devedor}"
+
+    renomear_pdf(caminho, montar_nome(data, destinatario, valor))
+    return True
+
+
 def handle_sicredi_debito_automatico(texto: str, caminho: Path):
     """
     Cobre comprovantes Sicredi do tipo:
@@ -660,6 +739,7 @@ BANCOS = {
     ],
     "Sicredi": [
         handle_sicredi_pix,
+        handle_sicredi_pix_ib,
         handle_sicredi_debito_automatico,
         handle_sicredi_contas_consumo,
         handle_sicredi_tributos,
