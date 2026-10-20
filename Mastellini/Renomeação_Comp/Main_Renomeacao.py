@@ -43,7 +43,11 @@ def atualizar_repositorio():
     """
     Clona o repositório se ele ainda não existir localmente,
     ou faz um pull para atualizar a versão local.
-    Retorna True se tudo ocorreu bem, False caso contrário.
+
+    Se o pull falhar (ex.: sem internet), pergunta ao usuário se deseja
+    continuar usando a versão local já existente.
+
+    Retorna True se pode prosseguir com a execução, False caso contrário.
     """
     if not git_disponivel():
         messagebox.showerror(
@@ -68,11 +72,18 @@ def atualizar_repositorio():
             )
 
             if resultado.returncode != 0:
-                messagebox.showerror(
-                    "Erro ao atualizar repositório",
-                    resultado.stderr or "Erro desconhecido ao executar git pull."
+                # Falhou o pull: oferece usar a versão local
+                usar_local = messagebox.askyesno(
+                    "Sem conexão com o GitHub",
+                    "Não foi possível atualizar o repositório.\n\n"
+                    f"{resultado.stderr or 'Erro desconhecido ao executar git pull.'}\n\n"
+                    "Deseja executar usando a versão local mesmo assim?"
                 )
-                return False
+                if usar_local:
+                    status_label.config(text="Usando versão local ⚠️")
+                else:
+                    status_label.config(text="")
+                return usar_local
 
         else:
             # Repositório ainda não existe -> clonar
@@ -92,6 +103,7 @@ def atualizar_repositorio():
                     "Erro ao clonar repositório",
                     resultado.stderr or "Erro desconhecido ao executar git clone."
                 )
+                status_label.config(text="")
                 return False
 
         status_label.config(text="Repositório atualizado ✅")
