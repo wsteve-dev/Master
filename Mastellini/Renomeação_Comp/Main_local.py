@@ -75,6 +75,12 @@ btn4 = tk.Button(
 )
 btn4.pack(pady=5)
 
+btn5 = tk.Button(
+    janela, text="Taubaté", width=28, height=2,
+    command=lambda: rodar_script(Lista_Taubate, "Taubaté", precisa_console=True)
+)
+btn5.pack(pady=5)
+
 status_label = tk.Label(janela, text="", fg="green")
 status_label.pack(pady=10)
 
