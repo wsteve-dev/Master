@@ -20,6 +20,7 @@ RENOMEAR_PDFS = os.path.join(PASTA_BASE, "renomear_pdfs.py")
 REMOVER_PONTOS_VIRGULAS = os.path.join(PASTA_BASE, "Remover_Pontos_Virgulas.py")
 RENOMEAR_CRBM = os.path.join(PASTA_BASE, "Renomear_CRBM.py")
 RENOMEAR_MVF = os.path.join(PASTA_BASE, "Renomear_MVF.py")
+Lista_Taubate = os.path.join(PASTA_BASE, "Lista_Taubate.py")
 
 
 def rodar_script(caminho, nome_script, precisa_console=False):
