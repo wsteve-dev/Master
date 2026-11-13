@@ -46,7 +46,7 @@ def rodar_script(caminho, nome_script, precisa_console=False):
 # ---------------- Interface ----------------
 janela = tk.Tk()
 janela.title("Painel de Renomeação de PDFs (Local)")
-janela.geometry("320x300")
+janela.minsize(320, 0)
 janela.resizable(False, False)
 
 titulo = tk.Label(janela, text="Escolha a automação", font=("Segoe UI", 13, "bold"))
